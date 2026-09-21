@@ -1,0 +1,1747 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Esquites Santa Cruz AR</title>
+
+  <style>
+    :root {
+      --panel-background: rgba(15, 15, 15, 0.85);
+      --panel-shadow: rgba(0, 0, 0, 0.32);
+      --game-white: #FFFFFF;
+      --game-yellow: #FFD54F;
+      --game-green: #9BE33A;
+      --game-red: #FF5252;
+    }
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+
+    #fondoCongelado {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: none;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      pointer-events: none;
+    }
+
+    a-scene {
+      position: fixed !important;
+      inset: 0;
+      z-index: 20 !important;
+    }
+
+    .a-canvas {
+      position: absolute !important;
+      inset: 0;
+      z-index: 20 !important;
+      background: transparent !important;
+    }
+
+    body.experiencia-desbloqueada .mindar-ui-scanning {
+      display: none !important;
+    }
+
+    body.experiencia-desbloqueada a-scene,
+    body.experiencia-desbloqueada .a-canvas {
+      z-index: 0 !important;
+      pointer-events: none !important;
+    }
+
+    /* Experiencia desbloqueada: capa visual 2D independiente de WebGL. */
+    #experiencia2D {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      pointer-events: none;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    #experiencia2D.is-visible { display: block; }
+
+    #mascota2D {
+      position: absolute;
+      left: 50%;
+      bottom: clamp(5%, 9vh, 12%);
+      z-index: 21;
+      width: clamp(155px, 43vw, 310px);
+      height: auto;
+      opacity: 0;
+      transform: translate(-50%, 55vh) scale(0.01) rotate(15deg);
+      transform-origin: 50% 70%;
+      pointer-events: auto;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    #mascota2D.is-entering {
+      animation: mascotaEntrada2D 1000ms cubic-bezier(.18,.89,.32,1.28) forwards;
+    }
+
+    #mascota2D.is-idle {
+      opacity: 1;
+      animation: mascotaFlotar2D 1400ms ease-in-out infinite alternate;
+    }
+
+    #mascota2D.is-jumping {
+      opacity: 1;
+      animation: mascotaSalto2D 600ms ease-out;
+    }
+
+    #mascota2D.is-disappointed {
+      opacity: 1;
+      animation: mascotaDecepcion2D 900ms ease-in-out;
+    }
+
+    @keyframes mascotaEntrada2D {
+      0% { opacity: 0; transform: translate(-50%, 55vh) scale(0.01) rotate(15deg); }
+      100% { opacity: 1; transform: translate(-50%, 0) scale(1) rotate(0deg); }
+    }
+
+    @keyframes mascotaFlotar2D {
+      0% { transform: translate(-50%, 0) rotate(-3deg); }
+      100% { transform: translate(-50%, -2.2vh) rotate(3deg); }
+    }
+
+    @keyframes mascotaSalto2D {
+      0%, 100% { transform: translate(-50%, 0) scale(1) rotate(0deg); }
+      50% { transform: translate(-50%, -2vh) scale(1.8) rotate(0deg); }
+    }
+
+    @keyframes mascotaDecepcion2D {
+      0%, 100% { transform: translate(-50%, 0) scale(1); }
+      50% { transform: translate(-50%, 1.5vh) scale(0.75); }
+    }
+
+    #panel2D {
+      position: absolute;
+      left: 50%;
+      top: clamp(105px, 18vh, 190px);
+      z-index: 24;
+      display: none;
+      width: min(88vw, 430px);
+      padding: clamp(18px, 4vw, 28px);
+      box-sizing: border-box;
+      color: var(--game-white);
+      text-align: center;
+      background: var(--panel-background);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: clamp(20px, 5vw, 30px);
+      box-shadow: 0 7px 22px var(--panel-shadow);
+      transform: translateX(-50%);
+      pointer-events: auto;
+    }
+
+    #panel2D.is-visible { display: block; }
+    #panel2D.is-pulsing { animation: panelPulso2D 900ms ease-in-out infinite alternate; }
+    #panel2D.is-entering { animation: panelEntrada2D 500ms cubic-bezier(.18,.89,.32,1.28); }
+    @keyframes panelPulso2D { to { transform: translateX(-50%) scale(1.035); } }
+    @keyframes panelEntrada2D {
+      from { opacity: 0; transform: translateX(-50%) scale(0.05); }
+      to { opacity: 1; transform: translateX(-50%) scale(1); }
+    }
+
+    #panelTitulo2D {
+      margin: 0 0 12px;
+      color: var(--game-yellow);
+      font-size: clamp(1.45rem, 6vw, 2rem);
+      font-weight: 900;
+      line-height: 1.05;
+    }
+
+    #panelLineas2D p,
+    #panelPregunta2D,
+    #panelPuntuacionEtiqueta2D { margin: 7px 0; font-weight: 800; }
+    #panelPuntuacionEtiqueta2D { margin-top: 12px; }
+    #panelPuntuacionValor2D {
+      margin: 2px 0;
+      color: var(--game-yellow);
+      font-size: clamp(2.7rem, 14vw, 4.5rem);
+      font-weight: 900;
+      line-height: 1;
+    }
+    #panelRecord2D { margin: 8px 0; color: var(--game-green); font-weight: 900; }
+    #panelLlamada2D {
+      margin-top: 20px;
+      color: var(--game-yellow);
+      font-size: clamp(1rem, 4.5vw, 1.3rem);
+      font-weight: 900;
+      line-height: 1.15;
+      animation: llamadaPanel2D 1400ms ease-in-out infinite;
+    }
+
+    #panelLlamada2D[hidden] { display: none; }
+
+    @keyframes llamadaPanel2D {
+      0%, 100% { opacity: 0.86; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.05); }
+    }
+
+    .panel-boton-2d {
+      display: block;
+      width: 100%;
+      margin-top: 12px;
+      padding: 12px 10px;
+      border: 0;
+      border-radius: 18px;
+      color: #151515;
+      background: #FFD54F;
+      font: 900 clamp(1rem, 4.5vw, 1.3rem) Arial, Helvetica, sans-serif;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .panel-boton-2d[hidden] { display: none !important; }
+
+    /* Diagnóstico temporal del flujo de compartir; no forma parte de la captura. */
+    #diagnosticoCompartir {
+      position: fixed;
+      left: 50%;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+      z-index: 10000;
+      display: none;
+      padding: 10px 16px;
+      color: #151515;
+      background: #FFD54F;
+      border-radius: 999px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.38);
+      font: 900 0.95rem Arial, Helvetica, sans-serif;
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+
+    #objetosJuego2D {
+      position: absolute;
+      inset: 0;
+      z-index: 23;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .objeto-juego-2d {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: clamp(70px, 19vw, 125px);
+      height: auto;
+      transform: translate(-50%, -120%);
+      pointer-events: auto;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-drag: none;
+      will-change: transform;
+    }
+
+    #respuestaJuego2D {
+      position: absolute;
+      z-index: 26;
+      display: none;
+      color: var(--game-yellow);
+      font-size: clamp(1.7rem, 8vw, 3rem);
+      font-weight: 900;
+      text-align: center;
+      text-shadow: 0 3px 8px rgba(0, 0, 0, 0.9);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    #respuestaJuego2D.is-visible { display: block; }
+
+    /* Evita la Piedrita: HUD fijo sobre la cámara. */
+    .game-hud,
+    .game-hud * {
+      pointer-events: none;
+      box-sizing: border-box;
+    }
+
+    .game-hud {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 1000;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr);
+      align-items: start;
+      gap: clamp(5px, 2vw, 16px);
+      width: 100%;
+      padding: calc(env(safe-area-inset-top, 0px) + 10px) clamp(8px, 3vw, 20px) 0;
+      font-family: Arial, Helvetica, sans-serif;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 180ms ease;
+    }
+
+    .game-hud.is-visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .hud-panel {
+      width: clamp(88px, 26vw, 150px);
+      padding: clamp(7px, 2vw, 12px);
+      color: #FFFFFF;
+      text-align: center;
+      background: var(--panel-background);
+      border-radius: clamp(14px, 4vw, 20px);
+      box-shadow: 0 4px 12px var(--panel-shadow);
+    }
+
+    .hud-score {
+      justify-self: start;
+    }
+
+    .hud-streak {
+      grid-column: 3;
+      grid-row: 2;
+      justify-self: end;
+      opacity: 0;
+      visibility: hidden;
+      transform: scale(0.9);
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    .hud-streak.is-visible {
+      opacity: 1;
+      visibility: visible;
+      transform: scale(1);
+    }
+
+    .hud-label {
+      display: block;
+      font-size: clamp(0.62rem, 2.7vw, 0.86rem);
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }
+
+    .hud-score-value,
+    .hud-streak-value {
+      display: block;
+      margin: 1px 0;
+      color: #FFD54F;
+      font-size: clamp(1.65rem, 8vw, 2.7rem);
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .hud-record {
+      display: block;
+      margin-top: 4px;
+      color: #FFFFFF;
+      font-size: clamp(0.6rem, 2.5vw, 0.8rem);
+      font-weight: 800;
+    }
+
+    .hud-record-value {
+      color: #9BE33A;
+    }
+
+    .hud-level {
+      justify-self: center;
+      min-width: 0;
+      padding-top: 3px;
+      text-align: center;
+      text-shadow: 0 2px 5px rgba(0, 0, 0, 0.9);
+    }
+
+    .hud-center {
+      display: grid;
+      justify-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .hud-timer {
+      width: clamp(64px, 19vw, 108px);
+      font-size: clamp(1.7rem, 8vw, 2.7rem);
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+
+    .hud-timer.is-urgent {
+      color: var(--game-red);
+      animation: timerPulse 900ms ease-in-out infinite;
+    }
+
+    @keyframes timerPulse {
+      50% { transform: scale(1.045); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .hud-timer.is-urgent { animation: none; }
+    }
+
+    .hud-level-title {
+      color: #9BE33A;
+      font-size: clamp(1rem, 5vw, 1.75rem);
+      font-weight: 900;
+      line-height: 1.05;
+      white-space: nowrap;
+    }
+
+    .hud-level-subtitle {
+      min-height: 1.2em;
+      margin-top: 4px;
+      color: #FFFFFF;
+      font-size: clamp(0.68rem, 3vw, 1rem);
+      font-weight: 800;
+      opacity: 0;
+      transition: opacity 220ms ease;
+    }
+
+    .hud-level-subtitle.is-visible {
+      opacity: 1;
+    }
+
+    .hud-level.is-pop {
+      animation: hudLevelPop 550ms ease-out;
+    }
+
+    @keyframes hudLevelPop {
+      0% { transform: scale(0.78); opacity: 0.4; }
+      55% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    @media (max-width: 360px) {
+      .game-hud {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr);
+        gap: 4px;
+        padding-left: 5px;
+        padding-right: 5px;
+      }
+
+      .hud-score, .hud-streak {
+        width: 100%;
+      }
+    }
+  </style>
+
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <script>
+    // Fondo visual compartido. Los textos se actualizan con elementos a-text independientes.
+    AFRAME.registerComponent("panel-juego", {
+      init() {
+        this.canvas = document.createElement("canvas");
+        this.texture = new THREE.CanvasTexture(this.canvas);
+        this.aplicarTextura = () => {
+          const mesh = this.el.getObject3D("mesh");
+          if (!mesh || !mesh.material) return;
+          if (mesh.material.map !== this.texture) {
+            mesh.material.map = this.texture;
+            mesh.material.needsUpdate = true;
+          }
+          this.texture.needsUpdate = true;
+        };
+        this.el.setAttribute("material", {
+          shader: "flat", color: "#FFFFFF", opacity: 1,
+          transparent: true, alphaTest: 0.01, depthWrite: false
+        });
+        this.el.addEventListener("object3dset", this.aplicarTextura);
+      },
+      update() {
+        this.dibujar();
+      },
+      dibujar() {
+        const ancho = Number(this.el.getAttribute("width"));
+        const alto = Number(this.el.getAttribute("height"));
+        const canvas = this.canvas;
+        canvas.width = Math.round(ancho * 1000);
+        canvas.height = Math.round(alto * 1000);
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const estilo = getComputedStyle(document.documentElement);
+        const color = nombre => estilo.getPropertyValue(nombre).trim();
+        const w = canvas.width;
+        const h = canvas.height;
+        const margen = 18;
+        const radio = Math.min(42, h * 0.16);
+        ctx.beginPath();
+        ctx.roundRect(margen, margen, w - margen * 2, h - margen * 2, radio);
+        ctx.fillStyle = color("--panel-background");
+        ctx.shadowColor = color("--panel-shadow");
+        ctx.shadowBlur = 16;
+        ctx.shadowOffsetY = 5;
+        ctx.fill();
+        ctx.shadowColor = "transparent";
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.14)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        this.aplicarTextura();
+      },
+      remove() {
+        this.el.removeEventListener("object3dset", this.aplicarTextura);
+        this.texture.dispose();
+      }
+    });
+
+    // Texto del panel mediante Canvas 2D: usa las fuentes Unicode del navegador.
+    AFRAME.registerComponent("texto-panel-canvas", {
+      schema: {
+        value: { default: "" },
+        color: { default: "#FFFFFF" },
+        fontSize: { type: "number", default: 64 }
+      },
+      init() {
+        this.canvas = document.createElement("canvas");
+        this.canvas.width = 1024;
+        this.canvas.height = 160;
+        this.texture = new THREE.CanvasTexture(this.canvas);
+        this.aplicarTextura = () => {
+          const mesh = this.el.getObject3D("mesh");
+          if (!mesh || !mesh.material) return;
+          mesh.material.map = this.texture;
+          mesh.material.needsUpdate = true;
+          this.texture.needsUpdate = true;
+        };
+        this.el.setAttribute("material", {
+          shader: "flat", color: "#FFFFFF", transparent: true,
+          alphaTest: 0.01, depthWrite: false
+        });
+        this.el.addEventListener("object3dset", this.aplicarTextura);
+      },
+      update() {
+        const ctx = this.canvas.getContext("2d");
+        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        const esBoton =
+          this.el.id === "panelBotonTexto" ||
+          this.el.id === "panelCompartirTexto";
+        if (esBoton) {
+          ctx.beginPath();
+          ctx.roundRect(16, 10, this.canvas.width - 32, this.canvas.height - 20, 30);
+          ctx.fillStyle = "#FFD54F";
+          ctx.fill();
+        }
+        ctx.fillStyle = esBoton ? "#151515" : this.data.color;
+        ctx.font = `900 ${this.data.fontSize}px Arial, Helvetica, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(this.data.value, this.canvas.width / 2, this.canvas.height / 2, 980);
+        this.aplicarTextura();
+      },
+      remove() {
+        this.el.removeEventListener("object3dset", this.aplicarTextura);
+        this.texture.dispose();
+      }
+    });
+
+  </script>
+</head>
+
+<body>
+
+  <div id="gameHud" class="game-hud" aria-hidden="true">
+    <div class="hud-panel hud-score">
+      <span class="hud-label">PUNTUACIÓN</span>
+      <strong id="contadorPuntos" class="hud-score-value">0</strong>
+      <span class="hud-record">RÉCORD: <strong id="recordJuego" class="hud-record-value">0</strong></span>
+    </div>
+
+    <div class="hud-center">
+      <div id="tiempoHud" class="hud-panel hud-timer" role="timer" aria-label="Segundos restantes">60</div>
+      <div id="nivelHud" class="hud-level">
+        <div id="nivelHudTitulo" class="hud-level-title">¡NIVEL 1!</div>
+        <div id="nivelHudSubtitulo" class="hud-level-subtitle">Comienza</div>
+      </div>
+    </div>
+
+    <div id="rachaHud" class="hud-panel hud-streak">
+      <span class="hud-label">RACHA</span>
+      <strong id="rachaHudValor" class="hud-streak-value">x0</strong>
+    </div>
+  </div>
+
+  <canvas id="fondoCongelado" aria-hidden="true"></canvas>
+  <div id="diagnosticoCompartir" aria-live="polite"></div>
+
+  <!-- Juego visible 2D: MindAR se usa únicamente para el desbloqueo inicial. -->
+  <div id="experiencia2D" aria-hidden="true">
+    <img id="mascota2D" src="./mascota.png" alt="Mascota de Esquites Santa Cruz">
+
+    <div id="panel2D" role="dialog" aria-live="polite">
+      <h1 id="panelTitulo2D"></h1>
+      <div id="panelLineas2D"></div>
+      <div id="panelLlamada2D" hidden>TOCA AQUÍ PARA JUGAR</div>
+      <div id="panelPuntuacionEtiqueta2D" hidden>PUNTUACIÓN FINAL</div>
+      <div id="panelPuntuacionValor2D" hidden></div>
+      <div id="panelRecord2D" hidden></div>
+      <div id="panelPregunta2D" hidden>¿Puedes superarlo?</div>
+      <button id="botonReintentar2D" class="panel-boton-2d" type="button" hidden>JUGAR DE NUEVO</button>
+      <button id="botonCompartir2D" class="panel-boton-2d" type="button" hidden>COMPARTIR RESULTADO</button>
+    </div>
+
+    <div id="objetosJuego2D"></div>
+    <div id="respuestaJuego2D" aria-live="polite"></div>
+  </div>
+
+  <a-scene
+    mindar-image="imageTargetSrc: ./esquites.mind;"
+    color-space="sRGB"
+    renderer="colorManagement: true; physicallyCorrectLights: true; preserveDrawingBuffer: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
+
+    <a-assets>
+      <img id="mascota" src="./mascota.png">
+      <img id="ingrediente-maiz" src="./maiz.png">
+      <img id="ingrediente-limon" src="./limon.png">
+      <img id="ingrediente-queso" src="./queso.png">
+      <img id="ingrediente-chile" src="./chile.png">
+      <img id="ingrediente-piedrita" src="./piedrita.png">
+    </a-assets>
+
+    <a-entity id="targetLogo" mindar-image-target="targetIndex: 0"></a-entity>
+
+    <a-camera
+      id="camera"
+      position="0 0 0"
+      look-controls="enabled: false"
+      cursor="fuse: false; rayOrigin: mouse;"
+      raycaster="near: 0.01; far: 10000; objects: .clickable">
+
+      <a-entity
+        id="experienciaDesbloqueada"
+        visible="false"
+        position="0 0 -1"
+        scale="0.52 0.52 0.52">
+
+          <a-image
+            id="mascotaAR"
+            class="clickable"
+            src="#mascota"
+            position="0 -0.15 0.1"
+            width="1"
+            height="1"
+            scale="0.01 0.01 0.01"
+            rotation="15 0 0"
+            material="transparent: true; alphaTest: 0.01; side: double;"
+
+            animation__entrada="
+              property: scale;
+              from: 0.01 0.01 0.01;
+              to: 1 1 1;
+              dur: 900;
+              easing: easeOutBack;
+              startEvents: aparecer;
+            "
+
+            animation__subir="
+              property: position;
+              from: 0 -0.15 0.1;
+              to: 0 0.65 0.1;
+              dur: 1000;
+              easing: easeOutQuad;
+              startEvents: aparecer;
+            "
+
+            animation__enderezar="
+              property: rotation;
+              from: 15 0 0;
+              to: 0 0 0;
+              dur: 1000;
+              easing: easeOutQuad;
+              startEvents: aparecer;
+            "
+
+            animation__flotar="
+              property: position;
+              from: 0 0.65 0.1;
+              to: 0 0.78 0.1;
+              dur: 1300;
+              dir: alternate;
+              loop: true;
+              easing: easeInOutSine;
+              startEvents: comenzarFlotar;
+            "
+            animation__balanceo="
+              property: rotation;
+              from: 0 0 -3;
+              to: 0 0 3;
+              dur: 1400;
+              dir: alternate;
+              loop: true;
+              easing: easeInOutSine;
+              startEvents: comenzarBalanceo;
+            "
+           animation__salto="
+                property: scale;
+                from: 1 1 1;
+                to: 1.8 1.8 1.8;
+                dur: 300;
+                dir: alternate;
+                loop: 2;
+                easing: easeOutQuad;
+                startEvents: saltar;
+              "
+           animation__decepcion="
+                property: scale;
+                from: 1 1 1;
+                to: 0.75 0.75 0.75;
+                dur: 450;
+                dir: alternate;
+                loop: 2;
+                easing: easeInOutQuad;
+                startEvents: decepcion;
+              ">
+            
+        </a-image>
+
+        <!-- Único panel reutilizable: bienvenida, instrucciones y resultados. -->
+        <a-entity
+          id="panelInformativo"
+          visible="false"
+          position="0 1.0 0.15"
+          scale="0.95 0.95 0.95"
+          animation__pulso="
+            property: scale;
+            from: 0.95 0.95 0.95;
+            to: 1.03 1.03 1.03;
+            dur: 900;
+            dir: alternate;
+            loop: true;
+            easing: easeInOutSine;
+            startEvents: llamarAtencion;
+          ">
+          <a-plane
+            id="panelMensaje"
+            width="1.25"
+            height="0.48"
+            panel-juego>
+          </a-plane>
+
+          <a-plane id="panelTitulo" visible="false" width="1.35" height="0.20" position="0 0.08 0.025" texto-panel-canvas="color: #FFD54F; fontSize: 80"></a-plane>
+          <a-plane id="panelLinea1" visible="false" width="1.08" height="0.14" position="0 -0.08 0.025" texto-panel-canvas="fontSize: 50"></a-plane>
+          <a-plane id="panelLinea2" visible="false" width="1.08" height="0.14" position="0 -0.15 0.025" texto-panel-canvas="fontSize: 50"></a-plane>
+          <a-plane id="panelPuntuacionEtiqueta" visible="false" width="1.05" height="0.14" position="0 0.07 0.025" texto-panel-canvas="fontSize: 48"></a-plane>
+          <a-plane id="panelPuntuacionValor" visible="false" width="1.35" height="0.20" position="0 -0.04 0.025" texto-panel-canvas="color: #FFD54F; fontSize: 90"></a-plane>
+          <a-plane id="panelRecord" visible="false" width="1.15" height="0.15" position="0 -0.15 0.025" texto-panel-canvas="color: #8BC34A; fontSize: 54"></a-plane>
+          <a-plane id="panelPregunta" visible="false" width="1.0" height="0.14" position="0 -0.24 0.025" texto-panel-canvas="fontSize: 46"></a-plane>
+          <a-plane id="panelBotonTexto" visible="false" width="1.0" height="0.14" position="0 -0.35 0.08" texto-panel-canvas="color: #FFD54A; fontSize: 48"></a-plane>
+
+          <a-plane id="panelCompartirTexto" visible="false" width="1.22" height="0.17" position="0 -0.52 0.08" texto-panel-canvas="value: COMPARTIR RESULTADO; color: #151515; fontSize: 48"></a-plane>
+
+          <a-plane
+            id="botonReintentar"
+            class="clickable"
+            visible="false"
+            width="0.82"
+            height="0.15"
+            material="transparent: true; opacity: 0; side: double; depthWrite: false"
+            position="0 -0.35 0.03">
+          </a-plane>
+
+          <a-plane
+            id="botonCompartir"
+            class="clickable"
+            visible="false"
+            width="1.05"
+            height="0.18"
+            material="transparent: true; opacity: 0; side: double; depthWrite: false"
+            position="0 -0.52 0.03">
+          </a-plane>
+        </a-entity>
+
+        <!-- Evita la Piedrita: área dinámica y HUD del juego. -->
+        <a-entity id="objetosJuego"></a-entity>
+
+        <a-entity id="hudJuego" visible="false">
+          <a-text
+            id="respuestaJuego"
+            value=""
+            visible="false"
+            color="#FFD54F"
+            align="center"
+            width="1.5"
+            position="0 0.15 0.34">
+          </a-text>
+        </a-entity>
+
+      </a-entity>
+    </a-camera>
+
+  </a-scene>
+
+   <script>
+document.addEventListener("DOMContentLoaded", () => {
+
+  const scene = document.querySelector("a-scene");
+  const target = document.querySelector("[mindar-image-target]");
+  const fondoCongelado = document.querySelector("#fondoCongelado");
+  const experiencia2D = document.querySelector("#experiencia2D");
+  const mascota = document.querySelector("#mascota2D");
+  const panelInformativo = document.querySelector("#panel2D");
+  const panelTitulo = document.querySelector("#panelTitulo2D");
+  const panelLineas = document.querySelector("#panelLineas2D");
+  const panelPuntuacionEtiqueta = document.querySelector("#panelPuntuacionEtiqueta2D");
+  const panelPuntuacionValor = document.querySelector("#panelPuntuacionValor2D");
+  const panelRecord = document.querySelector("#panelRecord2D");
+  const panelPregunta = document.querySelector("#panelPregunta2D");
+  const panelLlamada = document.querySelector("#panelLlamada2D");
+  const gameHud = document.querySelector("#gameHud");
+  const objetosJuego = document.querySelector("#objetosJuego2D");
+  const contadorPuntos = document.querySelector("#contadorPuntos");
+  const tiempoHud = document.querySelector("#tiempoHud");
+  const recordJuego = document.querySelector("#recordJuego");
+  const nivelHud = document.querySelector("#nivelHud");
+  const nivelHudTitulo = document.querySelector("#nivelHudTitulo");
+  const nivelHudSubtitulo = document.querySelector("#nivelHudSubtitulo");
+  const rachaHud = document.querySelector("#rachaHud");
+  const rachaHudValor = document.querySelector("#rachaHudValor");
+  const respuestaJuego = document.querySelector("#respuestaJuego2D");
+  const botonReintentar = document.querySelector("#botonReintentar2D");
+  const botonCompartir = document.querySelector("#botonCompartir2D");
+  const diagnosticoCompartir = document.querySelector("#diagnosticoCompartir");
+
+  let animacionesTimeout;
+  let mensajeInicialTimeout;
+  let promocionCerrada = false;
+  let panelActual = null;
+  let experienciaIniciada = false;
+  let fondoCapturado = false;
+  let experienciaDesbloqueada = false;
+  let compartiendoResultado = false;
+  let resultadoCompartibleBlob = null;
+  let resultadoCompartibleFile = null;
+  let resultadoCompartiblePromise = null;
+  let versionResultadoCompartible = 0;
+  let inicioPreparacionCompartible = 0;
+  let dimensionesResultadoCompartible = { width: 0, height: 0 };
+
+  const mostrarDiagnosticoCompartir = texto => {
+    diagnosticoCompartir.textContent = texto;
+    diagnosticoCompartir.style.display = "block";
+  };
+
+  const ocultarDiagnosticoCompartir = () => {
+    diagnosticoCompartir.style.display = "none";
+  };
+
+  const reiniciarAnimacionMascota = clase => {
+    mascota.classList.remove("is-idle", "is-jumping", "is-disappointed");
+    void mascota.offsetWidth;
+    mascota.classList.add(clase);
+    if (clase !== "is-idle") {
+      mascota.addEventListener("animationend", () => {
+        mascota.classList.remove(clase);
+        mascota.classList.add("is-idle");
+      }, { once: true });
+    }
+  };
+
+  const mostrarMascota2D = () => {
+    mascota.classList.remove("is-idle", "is-jumping", "is-disappointed");
+    mascota.classList.add("is-entering");
+    mascota.addEventListener("animationend", () => {
+      mascota.classList.remove("is-entering");
+      mascota.classList.add("is-idle");
+    }, { once: true });
+  };
+
+  const saltarMascota2D = () => reiniciarAnimacionMascota("is-jumping");
+  const decepcionarMascota2D = () => reiniciarAnimacionMascota("is-disappointed");
+
+  const ocultarElementosResultado = () => {
+    [panelPuntuacionEtiqueta, panelPuntuacionValor, panelRecord, panelPregunta,
+      botonReintentar, botonCompartir].forEach(elemento => { elemento.hidden = true; });
+    botonReintentar.style.display = "none";
+    botonCompartir.style.display = "none";
+  };
+
+  // Un único panel HTML conserva los cuatro estados visuales existentes.
+  const mostrarPanelInformativo = (panel, datos = {}) => {
+    panelActual = panel;
+    panelInformativo.className = "";
+    panelInformativo.classList.remove("is-visible", "is-pulsing", "is-entering");
+    panelTitulo.textContent = "";
+    panelLineas.replaceChildren();
+    panelLlamada.hidden = true;
+    ocultarElementosResultado();
+
+    if (!panel) return;
+
+    if (panel === "bienvenida") {
+      panelTitulo.textContent = "HOLA";
+      panelLineas.innerHTML = "<p>Tócame para empezar a jugar</p>";
+      panelInformativo.classList.add("is-visible", "is-pulsing");
+    } else if (panel === "instrucciones") {
+      panelTitulo.textContent = "EVITA LA PIEDRITA";
+      panelLineas.innerHTML = "<p>Atrapa los ingredientes y suma puntos.</p><p>No toques la piedrita.</p>";
+      panelLlamada.hidden = false;
+      panelInformativo.classList.add("is-visible", "is-entering");
+    } else if (panel === "piedrita" || panel === "tiempo") {
+      const motivo = panel;
+      panelTitulo.textContent = motivo === "tiempo" ? "¡SE ACABÓ EL TIEMPO!" : "¡PIEDRITA!";
+      if (motivo === "piedrita") {
+        panelLineas.innerHTML = "<p>La piedrita arruinó el esquite.</p>";
+      }
+      panelPuntuacionValor.textContent = String(datos.puntos);
+      panelRecord.textContent = `RÉCORD: ${datos.record}`;
+      [panelPuntuacionEtiqueta, panelPuntuacionValor, panelRecord, panelPregunta,
+        botonReintentar, botonCompartir].forEach(elemento => { elemento.hidden = false; });
+      botonReintentar.style.display = "block";
+      botonCompartir.style.display = "block";
+      panelInformativo.classList.add("is-visible");
+    }
+  };
+
+  // Compartir resultado: compone cámara y WebGL en un único PNG.
+  const esperarFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
+
+  const obtenerVideoCamara = () => {
+    const videos = Array.from(document.querySelectorAll("video"));
+    return videos.find(video => video.srcObject && video.videoWidth > 0) ||
+      videos.find(video => video.videoWidth > 0) || null;
+  };
+
+  const dibujarConRecorteCover = (ctx, fuente, anchoFuente, altoFuente, ancho, alto) => {
+    const escala = Math.max(ancho / anchoFuente, alto / altoFuente);
+    const recorteAncho = ancho / escala;
+    const recorteAlto = alto / escala;
+    const origenX = (anchoFuente - recorteAncho) / 2;
+    const origenY = (altoFuente - recorteAlto) / 2;
+    ctx.drawImage(
+      fuente,
+      origenX, origenY, recorteAncho, recorteAlto,
+      0, 0, ancho, alto
+    );
+  };
+
+  const capturarFondoInicial = () => {
+    if (fondoCapturado) return true;
+    const video = obtenerVideoCamara();
+    const canvasWebGL = scene.renderer && scene.renderer.domElement;
+    if (!video || !canvasWebGL || !video.videoWidth || !video.videoHeight) return false;
+
+    fondoCongelado.width = canvasWebGL.width;
+    fondoCongelado.height = canvasWebGL.height;
+    const ctx = fondoCongelado.getContext("2d");
+    ctx.clearRect(0, 0, fondoCongelado.width, fondoCongelado.height);
+    dibujarConRecorteCover(
+      ctx,
+      video,
+      video.videoWidth,
+      video.videoHeight,
+      fondoCongelado.width,
+      fondoCongelado.height
+    );
+    fondoCongelado.style.display = "block";
+    video.style.visibility = "hidden";
+    document.body.classList.add("experiencia-desbloqueada");
+    fondoCapturado = true;
+    return true;
+  };
+
+  const convertirCanvasABlob = canvas => new Promise((resolve, reject) => {
+    const inicioToBlob = performance.now();
+    console.log("[SHARE] Inicio toBlob", {
+      tiempo: inicioToBlob,
+      msDesdeInicio: inicioToBlob - inicioPreparacionCompartible
+    });
+    canvas.toBlob(blob => {
+      const finToBlob = performance.now();
+      console.log("[SHARE] Blob terminado", {
+        tiempo: finToBlob,
+        msToBlob: finToBlob - inicioToBlob,
+        msDesdeInicio: finToBlob - inicioPreparacionCompartible,
+        bytes: blob ? blob.size : 0
+      });
+      if (blob) resolve(blob);
+      else reject(new Error("No se pudo generar la imagen PNG."));
+    }, "image/png");
+  });
+
+  const capturarResultado = async () => {
+    if (!fondoCapturado) {
+      throw new Error("El fondo congelado no está disponible.");
+    }
+
+    await esperarFrame();
+    const inicioDibujo = performance.now();
+    const ancho = fondoCongelado.width;
+    const alto = fondoCongelado.height;
+    const canvasFinal = document.createElement("canvas");
+    canvasFinal.width = ancho;
+    canvasFinal.height = alto;
+    const ctx = canvasFinal.getContext("2d");
+
+      // La imagen compartida usa la fotografía congelada, nunca el video vivo.
+      dibujarConRecorteCover(
+        ctx,
+        fondoCongelado,
+        fondoCongelado.width,
+        fondoCongelado.height,
+        ancho,
+        alto
+      );
+
+      // Composición 2D equivalente al resultado visible, sin depender de WebGL.
+      if (!mascota.complete) {
+        await new Promise((resolve, reject) => {
+          mascota.addEventListener("load", resolve, { once: true });
+          mascota.addEventListener("error", reject, { once: true });
+        });
+      }
+      const anchoMascota = Math.min(ancho * 0.43, 430);
+      const altoMascota = anchoMascota * mascota.naturalHeight / mascota.naturalWidth;
+      ctx.drawImage(
+        mascota,
+        (ancho - anchoMascota) / 2,
+        alto - altoMascota - alto * 0.07,
+        anchoMascota,
+        altoMascota
+      );
+
+      const panelAncho = Math.min(ancho * 0.88, 760);
+      const panelAlto = Math.min(alto * 0.53, 720);
+      const panelX = (ancho - panelAncho) / 2;
+      const panelY = Math.max(alto * 0.12, 55);
+      const escalaTexto = Math.max(1, Math.min(ancho, alto) / 520);
+      ctx.beginPath();
+      ctx.roundRect(panelX, panelY, panelAncho, panelAlto, 32 * escalaTexto);
+      ctx.fillStyle = "rgba(15, 15, 15, 0.85)";
+      ctx.shadowColor = "rgba(0, 0, 0, 0.32)";
+      ctx.shadowBlur = 20 * escalaTexto;
+      ctx.fill();
+      ctx.shadowColor = "transparent";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      const centroX = ancho / 2;
+      const motivoTitulo = panelActual === "tiempo" ? "¡SE ACABÓ EL TIEMPO!" : "¡PIEDRITA!";
+      ctx.fillStyle = "#FFD54F";
+      ctx.font = `900 ${34 * escalaTexto}px Arial, Helvetica, sans-serif`;
+      ctx.fillText(motivoTitulo, centroX, panelY + panelAlto * 0.13, panelAncho * 0.9);
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = `800 ${19 * escalaTexto}px Arial, Helvetica, sans-serif`;
+      if (panelActual === "piedrita") {
+        ctx.fillText("La piedrita arruinó el esquite.", centroX, panelY + panelAlto * 0.24, panelAncho * 0.9);
+      }
+      ctx.fillText("PUNTUACIÓN FINAL", centroX, panelY + panelAlto * 0.36, panelAncho * 0.9);
+      ctx.fillStyle = "#FFD54F";
+      ctx.font = `900 ${58 * escalaTexto}px Arial, Helvetica, sans-serif`;
+      ctx.fillText(String(puntos), centroX, panelY + panelAlto * 0.49);
+      ctx.fillStyle = "#9BE33A";
+      ctx.font = `900 ${22 * escalaTexto}px Arial, Helvetica, sans-serif`;
+      ctx.fillText(`RÉCORD: ${record}`, centroX, panelY + panelAlto * 0.61, panelAncho * 0.9);
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = `800 ${18 * escalaTexto}px Arial, Helvetica, sans-serif`;
+      ctx.fillText("¿Puedes superarlo?", centroX, panelY + panelAlto * 0.70, panelAncho * 0.9);
+      ctx.beginPath();
+      ctx.roundRect(panelX + panelAncho * 0.09, panelY + panelAlto * 0.77,
+        panelAncho * 0.82, panelAlto * 0.15, 20 * escalaTexto);
+      ctx.fillStyle = "#FFD54F";
+      ctx.fill();
+      ctx.fillStyle = "#151515";
+      ctx.font = `900 ${21 * escalaTexto}px Arial, Helvetica, sans-serif`;
+      ctx.fillText("JUGAR DE NUEVO", centroX, panelY + panelAlto * 0.845, panelAncho * 0.75);
+    dimensionesResultadoCompartible = { width: canvasFinal.width, height: canvasFinal.height };
+    const canvasDibujado = performance.now();
+    console.log("[SHARE] Canvas dibujado", {
+      tiempo: canvasDibujado,
+      msDibujo: canvasDibujado - inicioDibujo,
+      msDesdeInicio: canvasDibujado - inicioPreparacionCompartible,
+      width: canvasFinal.width,
+      height: canvasFinal.height
+    });
+    return convertirCanvasABlob(canvasFinal);
+  };
+
+  const guardarImagenResultado = blob => {
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement("a");
+    enlace.href = url;
+    enlace.download = "resultado-esquites-santa-cruz.png";
+    enlace.target = "_blank";
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  };
+
+  const invalidarResultadoCompartible = () => {
+    versionResultadoCompartible += 1;
+    resultadoCompartibleBlob = null;
+    resultadoCompartibleFile = null;
+    resultadoCompartiblePromise = null;
+    inicioPreparacionCompartible = 0;
+    dimensionesResultadoCompartible = { width: 0, height: 0 };
+  };
+
+  const prepararResultadoCompartible = () => {
+    if (resultadoCompartibleFile) return Promise.resolve(resultadoCompartibleFile);
+    if (resultadoCompartiblePromise) return resultadoCompartiblePromise;
+
+    const versionPreparacion = versionResultadoCompartible;
+    inicioPreparacionCompartible = performance.now();
+    console.log("[SHARE] Inicio preparación", inicioPreparacionCompartible);
+    resultadoCompartiblePromise = capturarResultado()
+      .then(blob => {
+        const inicioFile = performance.now();
+        const archivo = new File(
+          [blob],
+          "resultado-esquites-santa-cruz.png",
+          { type: "image/png" }
+        );
+        const finFile = performance.now();
+        console.log("[SHARE] File listo", {
+          tiempo: finFile,
+          msCreacionFile: finFile - inicioFile,
+          msPreparacionTotal: finFile - inicioPreparacionCompartible
+        });
+        console.log("[SHARE] archivo", {
+          width: dimensionesResultadoCompartible.width,
+          height: dimensionesResultadoCompartible.height,
+          type: archivo.type,
+          bytes: archivo.size,
+          MB: (archivo.size / 1024 / 1024).toFixed(2)
+        });
+
+        if (versionPreparacion === versionResultadoCompartible) {
+          resultadoCompartibleBlob = blob;
+          resultadoCompartibleFile = archivo;
+        }
+        return archivo;
+      })
+      .catch(error => {
+        if (versionPreparacion === versionResultadoCompartible) {
+          resultadoCompartiblePromise = null;
+        }
+        throw error;
+      });
+
+    return resultadoCompartiblePromise;
+  };
+
+  const compartirResultado = async tTap => {
+    if (compartiendoResultado || !partidaTerminada) return;
+    compartiendoResultado = true;
+
+    try {
+      console.log("[SHARE] Estado al TAP", {
+        fileExiste: Boolean(resultadoCompartibleFile),
+        promiseExiste: Boolean(resultadoCompartiblePromise),
+        promiseYaTermino: Boolean(resultadoCompartibleFile),
+        preparandoAhora: Boolean(resultadoCompartiblePromise && !resultadoCompartibleFile),
+        seIniciaraGeneracion: Boolean(!resultadoCompartibleFile && !resultadoCompartiblePromise),
+        bytesFile: resultadoCompartibleFile ? resultadoCompartibleFile.size : 0
+      });
+
+      let archivo = resultadoCompartibleFile;
+      if (!archivo) {
+        mostrarDiagnosticoCompartir("PREPARANDO...");
+        const inicioEsperaTap = performance.now();
+        archivo = await prepararResultadoCompartible();
+        console.log(
+          "[SHARE] espera después del TAP:",
+          performance.now() - inicioEsperaTap,
+          "ms"
+        );
+      }
+
+      const datosCompartir = {
+        files: [archivo],
+        text: `¡Hice ${puntos} puntos en Evita la Piedrita de Esquites Santa Cruz! ¿Puedes superarme?`
+      };
+
+      const puedeCompartirArchivos = Boolean(
+        navigator.share &&
+        navigator.canShare &&
+        navigator.canShare({ files: [archivo] })
+      );
+      console.log("[SHARE] navigator.canShare archivos:", puedeCompartirArchivos);
+
+      if (puedeCompartirArchivos) {
+        mostrarDiagnosticoCompartir("COMPARTIENDO...");
+        console.log(
+          "[SHARE] llamando navigator.share",
+          performance.now() - tTap,
+          "ms después del TAP"
+        );
+        const tNativeShare = performance.now();
+        try {
+          await navigator.share(datosCompartir);
+          console.log(
+            "[SHARE] navigator.share resuelto después de",
+            performance.now() - tNativeShare,
+            "ms"
+          );
+        } catch (error) {
+          console.log(
+            "[SHARE] navigator.share rechazado después de",
+            performance.now() - tNativeShare,
+            "ms",
+            error?.name,
+            error?.message
+          );
+          throw error;
+        }
+      } else {
+        guardarImagenResultado(resultadoCompartibleBlob);
+      }
+    } catch (error) {
+      if (error && error.name === "AbortError") return;
+      console.error("No se pudo compartir el resultado:", error);
+    } finally {
+      compartiendoResultado = false;
+      ocultarDiagnosticoCompartir();
+    }
+  };
+
+  /* PNG visibles y geometrías originales usadas solo como zonas táctiles.
+     El tamaño visual conserva la proporción de cada archivo. */
+  const TIPOS_OBJETO = {
+    maiz: {
+      imagen: "#ingrediente-maiz",
+      ancho: 0.27,
+      alto: 0.246745,
+      giroImagen: 0,
+      puntos: 1,
+      geometry: "primitive: sphere; radius: 0.13",
+      scale: "0.72 1.15 0.58",
+      rotation: "0 0 0"
+    },
+    limon: {
+      imagen: "#ingrediente-limon",
+      ancho: 0.32,
+      alto: 0.263080,
+      giroImagen: 12,
+      puntos: 2,
+      geometry: "primitive: sphere; radius: 0.14",
+      scale: "1.05 0.78 0.78",
+      rotation: "0 0 -18"
+    },
+    queso: {
+      imagen: "#ingrediente-queso",
+      ancho: 0.3,
+      alto: 0.267470,
+      giroImagen: 0,
+      puntos: 3,
+      geometry: "primitive: box; width: 0.27; height: 0.18; depth: 0.11",
+      scale: "1 1 1",
+      rotation: "15 20 12"
+    },
+    chile: {
+      imagen: "#ingrediente-chile",
+      ancho: 0.34,
+      alto: 0.314950,
+      giroImagen: 0,
+      puntos: 5,
+      geometry: "primitive: cone; radiusBottom: 0.075; radiusTop: 0.025; height: 0.32",
+      scale: "1 1 1",
+      rotation: "0 0 -28"
+    },
+    piedrita: {
+      imagen: "#ingrediente-piedrita",
+      ancho: 0.29,
+      alto: 0.270995,
+      giroImagen: 0,
+      puntos: 0,
+      geometry: "primitive: dodecahedron; radius: 0.135",
+      scale: "1 0.82 0.9",
+      rotation: "18 25 12"
+    }
+  };
+
+  /* Evita la Piedrita: balance centralizado por nivel.
+     probabilidades usa el orden: maíz, limón, queso, chile y piedrita. */
+  const CONFIG_JUEGO = {
+    duracionRespuesta: 700,
+    duracionCaptura: 180,
+    tiempoMaximoRacha: 2600,
+    limiteHorizontal: 0.56,
+    separacionMinima: 0.23,
+    movimientoLateralMinimo: 0.12,
+    movimientoLateralMaximo: 0.28,
+    niveles: [
+      {
+        nivel: 1,
+        puntosMinimos: 0,
+        mensaje: "",
+        intervalo: 1900,
+        duracionCaida: 1800,
+        probabilidadExtra: 0.10,
+        probabilidadTriple: 0,
+        probabilidadRiesgo: 0,
+        probabilidadMovimientoLateral: 0,
+        probabilidades: [55, 24, 10, 4, 7]
+      },
+      {
+        nivel: 2,
+        puntosMinimos: 11,
+        mensaje: "¡Nivel 2! Más rápido",
+        intervalo: 1050,
+        duracionCaida: 1450,
+        probabilidadExtra: 0.35,
+        probabilidadTriple: 0.05,
+        probabilidadRiesgo: 0.10,
+        probabilidadMovimientoLateral: 0.20,
+        probabilidades: [42, 25, 15, 6, 12]
+      },
+      {
+        nivel: 3,
+        puntosMinimos: 26,
+        mensaje: "¡Nivel 3! ¡Cuidado!",
+        intervalo: 720,
+        duracionCaida: 1150,
+        probabilidadExtra: 0.60,
+        probabilidadTriple: 0.18,
+        probabilidadRiesgo: 0.25,
+        probabilidadMovimientoLateral: 0.40,
+        probabilidades: [31, 24, 17, 8, 20]
+      },
+      {
+        nivel: 4,
+        puntosMinimos: 41,
+        mensaje: "¡Nivel difícil!",
+        intervalo: 500,
+        duracionCaida: 900,
+        probabilidadExtra: 0.78,
+        probabilidadTriple: 0.35,
+        probabilidadRiesgo: 0.38,
+        probabilidadMovimientoLateral: 0.60,
+        probabilidades: [22, 21, 18, 9, 30]
+      }
+    ]
+  };
+
+  // Evita la Piedrita: estado y temporizadores centralizados de la partida.
+  let juegoActivo = false;
+  let partidaTerminada = false;
+  let puntos = 0;
+  let record = 0;
+  let racha = 0;
+  let nivelActual = 1;
+  let generacionTimeout;
+  let respuestaTimeout;
+  let rachaTimeout;
+  let nivelSubtituloTimeout;
+  const DURACION_PARTIDA_MS = 60000;
+  let finPartida = 0;
+  let temporizadorTimeout;
+
+  // Fecha límite monotónica: no acumula retrasos de setTimeout.
+  const actualizarTemporizador = () => {
+    if (!juegoActivo) return;
+    clearTimeout(temporizadorTimeout);
+    const restante = Math.max(0, finPartida - performance.now());
+    const segundos = Math.ceil(restante / 1000);
+    tiempoHud.textContent = String(segundos);
+    tiempoHud.classList.toggle("is-urgent", segundos > 0 && segundos <= 10);
+    if (restante === 0) {
+      terminarJuego("tiempo");
+      return;
+    }
+    temporizadorTimeout = setTimeout(
+      actualizarTemporizador, restante - (segundos - 1) * 1000
+    );
+  };
+
+  // Impide puntuar o generar si el navegador retrasó el callback del reloj.
+  const tiempoAgotado = () => {
+    if (performance.now() < finPartida) return false;
+    actualizarTemporizador();
+    return true;
+  };
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && juegoActivo) actualizarTemporizador();
+  });
+
+  try {
+    record = Number(localStorage.getItem("evitaPiedritaRecord")) || 0;
+  } catch (error) {
+    record = 0;
+  }
+  recordJuego.textContent = record;
+
+  // Evita la Piedrita: conexión visual del HUD HTML con el estado existente.
+  const SUBTITULOS_NIVEL = {
+    1: "Comienza",
+    2: "Más rápido",
+    3: "¡Cuidado!",
+    4: "¡Nivel difícil!"
+  };
+
+  const actualizarRachaHud = () => {
+    rachaHudValor.textContent = `x${racha}`;
+    rachaHud.classList.toggle("is-visible", racha > 0);
+  };
+
+  const actualizarNivelHud = (nivel, mostrarSubtitulo = false) => {
+    nivelHudTitulo.textContent = `¡NIVEL ${nivel}!`;
+    nivelHudSubtitulo.textContent = SUBTITULOS_NIVEL[nivel];
+    clearTimeout(nivelSubtituloTimeout);
+
+    nivelHud.classList.remove("is-pop");
+    void nivelHud.offsetWidth;
+    nivelHud.classList.add("is-pop");
+
+    nivelHudSubtitulo.classList.toggle("is-visible", mostrarSubtitulo);
+    if (mostrarSubtitulo) {
+      nivelSubtituloTimeout = setTimeout(() => {
+        nivelHudSubtitulo.classList.remove("is-visible");
+      }, 1800);
+    }
+  };
+
+  const mostrarHud = () => {
+    gameHud.classList.add("is-visible");
+    gameHud.setAttribute("aria-hidden", "false");
+  };
+
+  const ocultarHud = () => {
+    gameHud.classList.remove("is-visible");
+    gameHud.setAttribute("aria-hidden", "true");
+    rachaHud.classList.remove("is-visible");
+    nivelHudSubtitulo.classList.remove("is-visible");
+  };
+
+  const limpiarObjetos = () => {
+    objetosJuego.querySelectorAll(".objeto-juego-2d").forEach(objeto => {
+      objeto.getAnimations().forEach(animacion => animacion.cancel());
+    });
+    while (objetosJuego.firstChild) {
+      objetosJuego.removeChild(objetosJuego.firstChild);
+    }
+  };
+
+  const limpiarTemporizadoresJuego = () => {
+    clearTimeout(temporizadorTimeout);
+    finPartida = 0;
+    clearTimeout(generacionTimeout);
+    clearTimeout(respuestaTimeout);
+    clearTimeout(rachaTimeout);
+    clearTimeout(nivelSubtituloTimeout);
+  };
+
+  const obtenerNivel = () => {
+    return [...CONFIG_JUEGO.niveles]
+      .reverse()
+      .find(nivel => puntos >= nivel.puntosMinimos);
+  };
+
+  const elegirTipoObjeto = nivel => {
+    const nombres = ["maiz", "limon", "queso", "chile", "piedrita"];
+    let eleccion = Math.random() * 100;
+
+    for (let i = 0; i < nombres.length; i += 1) {
+      eleccion -= nivel.probabilidades[i];
+      if (eleccion <= 0) return nombres[i];
+    }
+
+    return "maiz";
+  };
+
+  const mostrarRespuesta = (texto, posicion, color = "#FFD54F") => {
+    clearTimeout(respuestaTimeout);
+    respuestaJuego.textContent = texto;
+    respuestaJuego.style.color = color;
+    respuestaJuego.style.left = `${posicion.x}px`;
+    respuestaJuego.style.top = `${posicion.y}px`;
+    respuestaJuego.classList.add("is-visible");
+    respuestaTimeout = setTimeout(() => {
+      respuestaJuego.classList.remove("is-visible");
+    }, CONFIG_JUEGO.duracionRespuesta);
+  };
+
+  const terminarJuego = (motivo = "piedrita") => {
+    if (!juegoActivo) return;
+
+    juegoActivo = false;
+    partidaTerminada = true;
+    limpiarTemporizadoresJuego();
+    limpiarObjetos();
+    respuestaJuego.classList.remove("is-visible");
+    ocultarHud();
+
+    if (puntos > record) {
+      record = puntos;
+      try {
+        localStorage.setItem("evitaPiedritaRecord", String(record));
+      } catch (error) {
+        // El juego continúa aunque el navegador no permita localStorage.
+      }
+      recordJuego.textContent = record;
+    }
+
+    mostrarPanelInformativo(motivo, { puntos, record });
+    decepcionarMascota2D();
+    prepararResultadoCompartible().catch(error => {
+      console.error("No se pudo preparar el resultado compartible:", error);
+    });
+  };
+
+  const atraparObjeto = objeto => {
+    if (!juegoActivo || objeto.dataset.activo !== "true") return;
+    if (tiempoAgotado()) return;
+
+    objeto.dataset.activo = "false";
+    const tipo = objeto.dataset.tipo;
+    const configuracion = TIPOS_OBJETO[tipo];
+
+    if (tipo === "piedrita") {
+      terminarJuego();
+      return;
+    }
+
+    const rect = objeto.getBoundingClientRect();
+    const posicion = {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2
+    };
+    puntos += configuracion.puntos;
+    racha += 1;
+    contadorPuntos.textContent = puntos;
+    actualizarRachaHud();
+
+    clearTimeout(rachaTimeout);
+    rachaTimeout = setTimeout(() => {
+      racha = 0;
+      actualizarRachaHud();
+    }, CONFIG_JUEGO.tiempoMaximoRacha);
+
+    const nuevoNivel = obtenerNivel();
+    const cambioDeNivel = nuevoNivel.nivel !== nivelActual;
+    nivelActual = nuevoNivel.nivel;
+
+    if (cambioDeNivel) {
+      actualizarNivelHud(nivelActual, true);
+    }
+
+    const mensaje = racha === 3 || racha === 5 || racha % 10 === 0
+        ? `¡Racha x${racha}!`
+        : `+${configuracion.puntos}`;
+    mostrarRespuesta(mensaje, posicion);
+
+    if (cambioDeNivel || racha === 3 || racha === 5 || racha % 10 === 0) {
+      saltarMascota2D();
+    }
+
+    objeto.getAnimations().forEach(animacion => animacion.cancel());
+    objeto.style.left = `${posicion.x}px`;
+    objeto.style.top = `${posicion.y}px`;
+    objeto.style.pointerEvents = "none";
+    const captura = objeto.animate(
+      [
+        { transform: `translate(-50%, -50%) scale(1)`, opacity: 1 },
+        { transform: `translate(-50%, -50%) scale(0.01)`, opacity: 0 }
+      ],
+      { duration: CONFIG_JUEGO.duracionCaptura, easing: "ease-in", fill: "forwards" }
+    );
+    captura.addEventListener("finish", () => objeto.remove(), { once: true });
+  };
+
+  const generarPosicionesOleada = cantidad => {
+    const posiciones = [];
+    const limite = CONFIG_JUEGO.limiteHorizontal;
+
+    for (let i = 0; i < cantidad; i += 1) {
+      let x;
+      let intentos = 0;
+
+      do {
+        x = -limite + Math.random() * limite * 2;
+        intentos += 1;
+      } while (
+        posiciones.some(posicion => Math.abs(posicion - x) < CONFIG_JUEGO.separacionMinima) &&
+        intentos < 20
+      );
+
+      posiciones.push(x);
+    }
+
+    // Respaldo justo si el azar no encontró suficiente separación.
+    if (posiciones.some((x, i) => posiciones.some((otro, j) => i !== j && Math.abs(x - otro) < CONFIG_JUEGO.separacionMinima))) {
+      if (cantidad === 2) return [-0.28, 0.28];
+      if (cantidad === 3) return [-0.44, 0, 0.44];
+    }
+
+    return posiciones;
+  };
+
+  const crearObjeto = (tipo, nivel, xInicial) => {
+    const configuracion = TIPOS_OBJETO[tipo];
+    const objeto = document.createElement("div");
+    let xFinal = xInicial;
+
+    if (Math.random() < nivel.probabilidadMovimientoLateral) {
+      const distancia = CONFIG_JUEGO.movimientoLateralMinimo +
+        Math.random() * (CONFIG_JUEGO.movimientoLateralMaximo - CONFIG_JUEGO.movimientoLateralMinimo);
+      const direccion = Math.random() < 0.5 ? -1 : 1;
+      let destinoPropuesto = xInicial + distancia * direccion;
+
+      if (Math.abs(destinoPropuesto) > CONFIG_JUEGO.limiteHorizontal) {
+        destinoPropuesto = xInicial - distancia * direccion;
+      }
+
+      xFinal = Math.max(
+        -CONFIG_JUEGO.limiteHorizontal,
+        Math.min(CONFIG_JUEGO.limiteHorizontal, destinoPropuesto)
+      );
+    }
+
+    // Representación 2D: conserva los PNG y usa una zona táctil amplia en móvil.
+    objeto.className = "objeto-juego-2d";
+    const imagen = document.createElement("img");
+    imagen.src = document.querySelector(configuracion.imagen).getAttribute("src");
+    imagen.alt = tipo;
+    imagen.draggable = false;
+    imagen.style.display = "block";
+    imagen.style.width = "100%";
+    imagen.style.height = "auto";
+    imagen.style.transform = `rotate(${configuracion.giroImagen}deg)`;
+    objeto.appendChild(imagen);
+    objeto.dataset.tipo = tipo;
+    objeto.dataset.activo = "true";
+    objeto.style.width = `clamp(70px, ${(configuracion.ancho / 0.34 * 19).toFixed(2)}vw, 125px)`;
+
+    const aPorcentaje = x => 50 + (x / CONFIG_JUEGO.limiteHorizontal) * 35;
+    const xInicioPantalla = aPorcentaje(xInicial);
+    const xFinalPantalla = aPorcentaje(xFinal);
+    objeto.style.left = `${xInicioPantalla}%`;
+    objeto.addEventListener("pointerdown", evento => {
+      evento.preventDefault();
+      atraparObjeto(objeto);
+    });
+    objetosJuego.appendChild(objeto);
+
+    const caida = objeto.animate(
+      [
+        { left: `${xInicioPantalla}%`, transform: "translate(-50%, -120%)" },
+        { left: `${xFinalPantalla}%`, transform: "translate(-50%, calc(100vh + 120%))" }
+      ],
+      { duration: nivel.duracionCaida, easing: "ease-in", fill: "forwards" }
+    );
+    caida.addEventListener("finish", () => objeto.remove(), { once: true });
+  };
+
+  const generarOleada = nivel => {
+    let tipos;
+
+    // En niveles altos puede aparecer una recompensa valiosa junto a una piedra.
+    if (Math.random() < nivel.probabilidadRiesgo) {
+      tipos = [Math.random() < 0.55 ? "queso" : "chile", "piedrita"];
+      if (nivel.nivel >= 3 && Math.random() < nivel.probabilidadTriple) {
+        tipos.splice(1, 0, elegirTipoObjeto(nivel));
+      }
+    } else {
+      let cantidad = 1;
+      if (Math.random() < nivel.probabilidadExtra) cantidad = 2;
+      if (Math.random() < nivel.probabilidadTriple) cantidad = 3;
+      tipos = Array.from({ length: cantidad }, () => elegirTipoObjeto(nivel));
+    }
+
+    const posiciones = generarPosicionesOleada(tipos.length);
+    tipos.forEach((tipo, i) => crearObjeto(tipo, nivel, posiciones[i]));
+  };
+
+  // La frecuencia, velocidad y cantidad dependen del nivel por puntuación.
+  const programarSiguienteObjeto = () => {
+    if (!juegoActivo) return;
+    if (tiempoAgotado()) return;
+
+    const nivel = obtenerNivel();
+    generarOleada(nivel);
+    generacionTimeout = setTimeout(programarSiguienteObjeto, nivel.intervalo);
+  };
+
+  const iniciarJuego = () => {
+    invalidarResultadoCompartible();
+    limpiarTemporizadoresJuego();
+    limpiarObjetos();
+    mostrarPanelInformativo(null);
+
+    juegoActivo = true;
+    finPartida = performance.now() + DURACION_PARTIDA_MS;
+    actualizarTemporizador();
+    partidaTerminada = false;
+    puntos = 0;
+    racha = 0;
+    nivelActual = 1;
+
+    contadorPuntos.textContent = "0";
+    recordJuego.textContent = record;
+    actualizarRachaHud();
+    actualizarNivelHud(1, true);
+    respuestaJuego.classList.remove("is-visible");
+    mostrarHud();
+
+    generacionTimeout = setTimeout(programarSiguienteObjeto, 450);
+  };
+
+  target.addEventListener("targetFound", () => {
+    if (experienciaDesbloqueada || experienciaIniciada) return;
+    if (!capturarFondoInicial()) return;
+
+    experienciaDesbloqueada = true;
+    experienciaIniciada = true;
+    experiencia2D.classList.add("is-visible");
+    experiencia2D.setAttribute("aria-hidden", "false");
+
+    mostrarMascota2D();
+
+    mensajeInicialTimeout = setTimeout(() => {
+      mostrarPanelInformativo("bienvenida");
+    }, 1100);
+  });
+
+  target.addEventListener("targetLost", () => {
+    // Tras el desbloqueo no se modifica el fondo ni la experiencia 2D.
+  });
+
+  mascota.addEventListener("pointerdown", evento => {
+    evento.preventDefault();
+    clearTimeout(mensajeInicialTimeout);
+    saltarMascota2D();
+
+    // Después de cerrar la promoción, el siguiente toque inicia la partida.
+    if (promocionCerrada && !juegoActivo && !partidaTerminada) {
+      iniciarJuego();
+      return;
+    }
+
+    if (!promocionCerrada) {
+      mostrarPanelInformativo("instrucciones");
+    }
+  });
+
+  panelInformativo.addEventListener("pointerdown", evento => {
+    if (panelActual !== "instrucciones") return;
+    evento.preventDefault();
+    mostrarPanelInformativo(null);
+    promocionCerrada = true;
+    iniciarJuego();
+  });
+
+  // Evita la Piedrita: reintento limpio sin recargar la página.
+  botonReintentar.addEventListener("pointerdown", evento => {
+    evento.stopPropagation();
+    evento.preventDefault();
+    if (!partidaTerminada) return;
+    iniciarJuego();
+  });
+
+  botonCompartir.addEventListener("click", evento => {
+    const tTap = performance.now();
+    console.log("[SHARE] TAP", tTap);
+    evento.stopPropagation();
+    compartirResultado(tTap);
+  });
+
+});
+</script>
+</body>
+</html>
